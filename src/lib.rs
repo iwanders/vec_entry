@@ -36,10 +36,10 @@ mod vec_usize_entry {
             }
         }
     }
-    impl<'a, C:'a + std::ops::IndexMut<usize>> Entry<'a,C> {
-        pub fn or_default(&mut self)  -> &mut <C as Index<usize>>::Output  {
-            match *self {
-                Entry::Occupied(ref mut entry) => entry.get_mut(),
+    impl<'a, C:'a + std::ops::IndexMut<usize>> Entry<'a, C> where <C as Index<usize>>::Output: Default{
+        pub fn or_default(mut self)  -> &'a mut <C as Index<usize>>::Output  {
+            match self {
+                Entry::Occupied(entry) => entry.into_mut(),
                 Entry::Vacant(ref entry) => {
                     // entry.z.resize(self.key() + 1);
                     // entry.key(),
@@ -58,8 +58,8 @@ mod vec_usize_entry {
         pub fn key(&self) -> &usize {
             &self.key
         }
-        pub fn get_mut(&mut self) -> &mut <C as Index<usize>>::Output  {
-            &mut self.z[self.key]
+        pub fn into_mut(self) -> &'a mut <C as Index<usize>>::Output  {
+            self.z.index_mut(self.key)
         }
     }
 
@@ -96,8 +96,10 @@ mod test {
         let z = m.entry(1);
         assert_eq!(z.key(), &1);
         
-        let mut x = m.entry(0);
-        let v0 = x.or_default();
+        // let mut x = ;
+        let v0 = m.entry(0).or_default();
         assert_eq!(v0, &0u8);
+        *v0 = 5;
+        assert_eq!(m[0], 5);
     }
 }
