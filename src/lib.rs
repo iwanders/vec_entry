@@ -1,4 +1,3 @@
-
 /*
     I tried generalising over the K type, but the problem then is that it cannot be known how
     much the vector should be grown, because there's no way to convert it to an usize.
@@ -10,14 +9,17 @@
     technically still support that, but we can't support resizing.
 */
 
-
 pub mod prelude {
     pub use crate::vec_usize_entry::VecUsizeEntry;
 }
 
 pub mod vec_usize_entry {
     use std::ops::{Index, IndexMut};
-    pub trait VecUsizeEntry<'a, C: 'a, V> where C: IndexMut<usize>{
+
+    pub trait VecUsizeEntry<'a, C: 'a, V>
+    where
+        C: IndexMut<usize>,
+    {
         fn entry(&mut self, key: usize) -> Entry<'_, C>;
     }
 
@@ -27,7 +29,7 @@ pub mod vec_usize_entry {
     }
 
     impl<T> VecUsizeInterface for Vec<T> {
-        type ElementType=T;
+        type ElementType = T;
         fn resize_with<F: FnMut() -> Self::ElementType>(&mut self, new_size: usize, f: F) {
             self.resize_with(new_size, f)
         }
@@ -49,25 +51,35 @@ pub mod vec_usize_entry {
         }
 
         // Hashmap doesn't have the sized bound of default, but it must be sized, how do they get that requirement?
-        pub fn or_insert(self, default: <C as Index<usize>>::Output ) -> &'a mut <C as Index<usize>>::Output where <C as Index<usize>>::Output: Sized, C: VecUsizeInterface,  <C as VecUsizeInterface>::ElementType: Default   {
+        pub fn or_insert(
+            self,
+            default: <C as Index<usize>>::Output,
+        ) -> &'a mut <C as Index<usize>>::Output
+        where
+            <C as Index<usize>>::Output: Sized,
+            C: VecUsizeInterface,
+            <C as VecUsizeInterface>::ElementType: Default,
+        {
             match self {
                 Entry::Occupied(entry) => entry.into_mut(),
                 Entry::Vacant(entry) => entry.insert(default),
             }
         }
     }
-    impl<'a, C:'a + std::ops::IndexMut<usize> + VecUsizeInterface> Entry<'a, C> where <C as VecUsizeInterface>::ElementType: Default {
-        pub fn or_default(self)  -> &'a mut <C as Index<usize>>::Output  {
+    impl<'a, C: 'a + std::ops::IndexMut<usize> + VecUsizeInterface> Entry<'a, C>
+    where
+        <C as VecUsizeInterface>::ElementType: Default,
+    {
+        pub fn or_default(self) -> &'a mut <C as Index<usize>>::Output {
             match self {
                 Entry::Occupied(entry) => entry.into_mut(),
-                Entry::Vacant(entry) => { 
+                Entry::Vacant(entry) => {
                     entry.z.resize_with(entry.key() + 1, Default::default);
                     entry.z.index_mut(*entry.key())
                 }
             }
         }
     }
-
 
     pub struct OccupiedEntry<'a, C: 'a> {
         z: &'a mut C,
@@ -81,7 +93,7 @@ pub mod vec_usize_entry {
     }
 
     impl<'a, C: 'a + std::ops::IndexMut<usize>> OccupiedEntry<'a, C> {
-        pub fn into_mut(self) -> &'a mut <C as Index<usize>>::Output  {
+        pub fn into_mut(self) -> &'a mut <C as Index<usize>>::Output {
             self.z.index_mut(self.key)
         }
     }
@@ -97,25 +109,32 @@ pub mod vec_usize_entry {
         }
     }
 
-    impl<'a, C: 'a+ std::ops::IndexMut<usize> + VecUsizeInterface> VacantEntry<'a, C> {
-
-        pub fn insert(self, value: <C as Index<usize>>::Output) -> &'a mut <C as Index<usize>>::Output  where <C as Index<usize>>::Output: Sized,  <C as VecUsizeInterface>::ElementType: Default   {
+    impl<'a, C: 'a + std::ops::IndexMut<usize> + VecUsizeInterface> VacantEntry<'a, C> {
+        pub fn insert(
+            self,
+            value: <C as Index<usize>>::Output,
+        ) -> &'a mut <C as Index<usize>>::Output
+        where
+            <C as Index<usize>>::Output: Sized,
+            <C as VecUsizeInterface>::ElementType: Default,
+        {
             self.z.resize_with(self.key() + 1, Default::default);
             let z = self.z.index_mut(*self.key());
             *z = value;
             z
         }
     }
-    
 
-
-    impl<'a, V:'a > VecUsizeEntry<'a, Vec<V>, V> for Vec<V>  where Vec<V>: std::ops::IndexMut<usize>{
+    impl<'a, V: 'a> VecUsizeEntry<'a, Vec<V>, V> for Vec<V>
+    where
+        Vec<V>: std::ops::IndexMut<usize>,
+    {
         fn entry(&mut self, key: usize) -> Entry<'_, Vec<V>> {
             if key < self.len() {
                 // value must be occupied.
-                Entry::Occupied(OccupiedEntry{z: self, key})
+                Entry::Occupied(OccupiedEntry { z: self, key })
             } else {
-                Entry::Vacant(VacantEntry{z: self, key})
+                Entry::Vacant(VacantEntry { z: self, key })
             }
         }
     }
@@ -123,8 +142,8 @@ pub mod vec_usize_entry {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::prelude::*;
+    use super::*;
 
     #[test]
     fn test_simple() {
@@ -145,6 +164,17 @@ mod test {
         let v1 = z.or_default();
         *v1 = 1;
         assert_eq!(m[1], 1);
+    }
+
+    #[test]
+    fn test_with_example() {
+        let mut m: Vec<u32> = vec![];
+        let a = m.entry(1).or_default();
+        assert_eq!(a, &0);
+        *a = 1;
+        let b = m.entry(3).or_insert(5);
+        assert_eq!(b, &5);
+        assert_eq!(m, vec![0, 1, 0, 5]);
     }
 
     #[test]
