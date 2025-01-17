@@ -6,8 +6,12 @@
     to grow.
 
     One of the initial commits has this over a generic key, if the vector holds options, we can
-    technically still support that, but we can't support resizing.
+    technically still support that, but we can't support resizing the vector if the entry is out of
+    bounds.
+
 */
+
+// All the bounds really need a cleanup.
 
 pub mod prelude {
     pub use crate::vec_usize_entry::VecUsizeEntry;
@@ -16,10 +20,11 @@ pub mod prelude {
 pub mod vec_usize_entry {
     use std::ops::{Index, IndexMut};
 
-    pub trait VecUsizeEntry<'a, C: 'a, V>
+    pub trait VecUsizeEntry<'a, C: 'a>
     where
         C: IndexMut<usize>,
     {
+        /// Gets an entry to the specified key in the Vec, does not modify the vec until action is taken.
         fn entry(&mut self, key: usize) -> Entry<'_, C>;
     }
 
@@ -50,7 +55,7 @@ pub mod vec_usize_entry {
             }
         }
 
-        // Hashmap doesn't have the sized bound of default, but it must be sized, how do they get that requirement?
+        /// Insert
         pub fn or_insert(
             self,
             default: <C as Index<usize>>::Output,
@@ -125,7 +130,7 @@ pub mod vec_usize_entry {
         }
     }
 
-    impl<'a, V: 'a> VecUsizeEntry<'a, Vec<V>, V> for Vec<V>
+    impl<'a, V: 'a> VecUsizeEntry<'a, Vec<V>> for Vec<V>
     where
         Vec<V>: std::ops::IndexMut<usize>,
     {
@@ -175,6 +180,8 @@ mod test {
         let b = m.entry(3).or_insert(5);
         assert_eq!(b, &5);
         assert_eq!(m, vec![0, 1, 0, 5]);
+        assert!(matches!(m.entry(2), vec_usize_entry::Entry::Occupied(_)));
+        assert!(matches!(m.entry(8), vec_usize_entry::Entry::Vacant(_)));
     }
 
     #[test]
