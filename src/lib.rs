@@ -47,6 +47,14 @@ pub mod vec_usize_entry {
                 Entry::Vacant(ref entry) => entry.key(),
             }
         }
+
+        // Hashmap doesn't have the sized bound of default, but it must be sized, how do they get that requirement?
+        pub fn or_insert(self, default: <C as Index<usize>>::Output ) -> &'a mut <C as Index<usize>>::Output where <C as Index<usize>>::Output: Sized, C: VecUsizeInterface,  <C as VecUsizeInterface>::ElementType: Default   {
+            match self {
+                Entry::Occupied(entry) => entry.into_mut(),
+                Entry::Vacant(entry) => entry.insert(default),
+            }
+        }
     }
     impl<'a, C:'a + std::ops::IndexMut<usize> + VecUsizeInterface> Entry<'a, C> where <C as VecUsizeInterface>::ElementType: Default {
         pub fn or_default(self)  -> &'a mut <C as Index<usize>>::Output  {
@@ -61,14 +69,18 @@ pub mod vec_usize_entry {
     }
 
 
-    pub struct OccupiedEntry<'a, C: 'a + std::ops::IndexMut<usize>> {
+    pub struct OccupiedEntry<'a, C: 'a> {
         z: &'a mut C,
         key: usize,
     }
-    impl<'a, C: 'a + std::ops::IndexMut<usize>> OccupiedEntry<'a, C> {
+
+    impl<'a, C: 'a> OccupiedEntry<'a, C> {
         pub fn key(&self) -> &usize {
             &self.key
         }
+    }
+
+    impl<'a, C: 'a + std::ops::IndexMut<usize>> OccupiedEntry<'a, C> {
         pub fn into_mut(self) -> &'a mut <C as Index<usize>>::Output  {
             self.z.index_mut(self.key)
         }
@@ -78,11 +90,24 @@ pub mod vec_usize_entry {
         z: &'a mut C,
         key: usize,
     }
+
     impl<'a, C: 'a> VacantEntry<'a, C> {
         pub fn key(&self) -> &usize {
             &self.key
         }
     }
+
+    impl<'a, C: 'a+ std::ops::IndexMut<usize> + VecUsizeInterface> VacantEntry<'a, C> {
+
+        pub fn insert(self, value: <C as Index<usize>>::Output) -> &'a mut <C as Index<usize>>::Output  where <C as Index<usize>>::Output: Sized,  <C as VecUsizeInterface>::ElementType: Default   {
+            self.z.resize_with(self.key() + 1, Default::default);
+            let z = self.z.index_mut(*self.key());
+            *z = value;
+            z
+        }
+    }
+    
+
 
     impl<'a, V:'a > VecUsizeEntry<'a, Vec<V>, V> for Vec<V>  where Vec<V>: std::ops::IndexMut<usize>{
         fn entry(&mut self, key: usize) -> Entry<'_, Vec<V>> {
@@ -120,8 +145,13 @@ mod test {
         let v1 = z.or_default();
         *v1 = 1;
         assert_eq!(m[1], 1);
+    }
 
-
-        
+    #[test]
+    fn test_with_optionals() {
+        let mut m: Vec<Option<u32>> = vec![Some(3)];
+        let r = m.entry(2).or_insert(Some(5));
+        assert_eq!(r, &Some(5));
+        assert_eq!(m, vec![Some(3), None, Some(5)]);
     }
 }
