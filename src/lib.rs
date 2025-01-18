@@ -216,6 +216,21 @@ pub mod vec_option_entry {
                 Entry::Vacant(entry) => entry.insert(value),
             }
         }
+
+        pub fn or_insert_with<F: FnOnce() -> ElementOfOptionalVec<C>>(
+            self,
+            f: F,
+        ) -> &'a mut ElementOfOptionalVec<C>
+        where
+            <C as Index<usize>>::Output: Sized,
+            <C as Index<usize>>::Output: OptionInterface,
+            <C as VecInterface>::ElementType: Default,
+        {
+            match self {
+                Entry::Occupied(entry) => entry.into_mut(),
+                Entry::Vacant(entry) => entry.insert(f()),
+            }
+        }
     }
 
     pub struct OccupiedEntry<'a, C: 'a> {
@@ -324,10 +339,19 @@ mod test {
     }
 
     #[test]
-    fn test_with_optional_optionaltrait() {
+    fn test_with_option_trait() {
         use crate::vec_option_entry::VecOptionEntry;
         let mut m: Vec<Option<u32>> = vec![Some(3)];
         let r = m.entry(2).or_insert(5);
+        assert_eq!(r, &5);
+        assert_eq!(m, vec![Some(3), None, Some(5)]);
+    }
+
+    #[test]
+    fn test_with_option_trait_insert_with() {
+        use crate::vec_option_entry::VecOptionEntry;
+        let mut m: Vec<Option<u32>> = vec![Some(3)];
+        let r = m.entry(2).or_insert_with(|| 5);
         assert_eq!(r, &5);
         assert_eq!(m, vec![Some(3), None, Some(5)]);
     }
