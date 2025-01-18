@@ -11,13 +11,40 @@
 
 */
 
-// All the bounds really need a cleanup.
-
-pub mod prelude {
-    pub use crate::vec_usize_entry::VecUsizeEntry;
+pub trait VecUsizeInterface {
+    type ElementType;
+    fn resize_with<F: FnMut() -> Self::ElementType>(&mut self, new_size: usize, f: F);
 }
 
+impl<T> VecUsizeInterface for Vec<T> {
+    type ElementType = T;
+    fn resize_with<F: FnMut() -> Self::ElementType>(&mut self, new_size: usize, f: F) {
+        self.resize_with(new_size, f)
+    }
+}
+
+pub trait OptionInterface {
+    type ElementType;
+    fn as_mut(&mut self) -> Option<&mut Self::ElementType>;
+    fn insert(&mut self, value: Self::ElementType) -> &mut Self::ElementType;
+}
+
+impl<T> OptionInterface for Option<T> {
+    type ElementType = T;
+    fn as_mut(&mut self) -> Option<&mut Self::ElementType> {
+        self.as_mut()
+    }
+    fn insert(&mut self, value: Self::ElementType) -> &mut Self::ElementType {
+        self.insert(value)
+    }
+}
+
+// Helper...
+type ElementOfOptionalVec<C> =
+    <<C as std::ops::Index<usize>>::Output as OptionInterface>::ElementType;
+
 pub mod vec_usize_entry {
+    use super::VecUsizeInterface;
     use std::ops::{Index, IndexMut};
 
     pub trait VecUsizeEntry<'a, C: 'a>
@@ -26,18 +53,6 @@ pub mod vec_usize_entry {
     {
         /// Gets an entry to the specified key in the Vec, does not modify the vec until action is taken.
         fn entry(&mut self, key: usize) -> Entry<'_, C>;
-    }
-
-    pub trait VecUsizeInterface {
-        type ElementType;
-        fn resize_with<F: FnMut() -> Self::ElementType>(&mut self, new_size: usize, f: F);
-    }
-
-    impl<T> VecUsizeInterface for Vec<T> {
-        type ElementType = T;
-        fn resize_with<F: FnMut() -> Self::ElementType>(&mut self, new_size: usize, f: F) {
-            self.resize_with(new_size, f)
-        }
     }
 
     pub enum Entry<'a, C: 'a + std::ops::IndexMut<usize>> {
@@ -145,13 +160,122 @@ pub mod vec_usize_entry {
     }
 }
 
+pub mod vec_usize_optional_entry {
+    use super::ElementOfOptionalVec;
+    use super::OptionInterface;
+    use super::VecUsizeInterface;
+    use std::ops::{Index, IndexMut};
+
+    pub trait VecOptionalUsizeEntry<'a, C: 'a>
+    where
+        C: IndexMut<usize>,
+    {
+        /// Gets an entry to the specified key in the Vec, does not modify the vec until action is taken.
+        fn entry(&mut self, key: usize) -> Entry<'_, C>;
+    }
+
+    impl<'a, V: 'a> VecOptionalUsizeEntry<'a, Vec<Option<V>>> for Vec<Option<V>> {
+        fn entry(&mut self, key: usize) -> Entry<'_, Vec<Option<V>>> {
+            if key < self.len() {
+                // value must be occupied.
+                Entry::Occupied(OccupiedEntry { z: self, key })
+            } else {
+                Entry::Vacant(VacantEntry { z: self, key })
+            }
+        }
+    }
+
+    pub enum Entry<'a, C: 'a + std::ops::IndexMut<usize>> {
+        /// An occupied entry.
+        Occupied(OccupiedEntry<'a, C>),
+
+        /// A vacant entry.
+        Vacant(VacantEntry<'a, C>),
+    }
+
+    impl<'a, C: 'a + std::ops::IndexMut<usize> + VecUsizeInterface> Entry<'a, C> {
+        pub fn key(&self) -> &usize {
+            match *self {
+                Entry::Occupied(ref entry) => entry.key(),
+                Entry::Vacant(ref entry) => entry.key(),
+            }
+        }
+
+        /// Insert
+        pub fn or_insert(self, value: ElementOfOptionalVec<C>) -> &'a mut ElementOfOptionalVec<C>
+        where
+            <C as Index<usize>>::Output: Sized,
+            <C as Index<usize>>::Output: OptionInterface,
+            <C as VecUsizeInterface>::ElementType: Default,
+        {
+            match self {
+                Entry::Occupied(entry) => entry.into_mut(),
+                Entry::Vacant(entry) => entry.insert(value),
+            }
+        }
+    }
+
+    pub struct OccupiedEntry<'a, C: 'a> {
+        z: &'a mut C,
+        key: usize,
+    }
+    impl<'a, C: 'a + std::ops::IndexMut<usize> + VecUsizeInterface> OccupiedEntry<'a, C>
+    where
+        <C as Index<usize>>::Output: OptionInterface,
+    {
+        pub fn into_mut(self) -> &'a mut ElementOfOptionalVec<C> {
+            self.z.index_mut(self.key).as_mut().unwrap()
+        }
+    }
+
+    impl<'a, C: 'a> OccupiedEntry<'a, C> {
+        pub fn key(&self) -> &usize {
+            &self.key
+        }
+    }
+
+    pub struct VacantEntry<'a, C: 'a> {
+        z: &'a mut C,
+        key: usize,
+    }
+
+    impl<'a, C: 'a> VacantEntry<'a, C> {
+        pub fn key(&self) -> &usize {
+            &self.key
+        }
+    }
+
+    impl<'a, C: 'a + std::ops::IndexMut<usize> + VecUsizeInterface> VacantEntry<'a, C> {
+        pub fn insert(self, value: ElementOfOptionalVec<C>) -> &'a mut ElementOfOptionalVec<C>
+        where
+            <C as Index<usize>>::Output: Sized,
+            <C as Index<usize>>::Output: OptionInterface,
+            <C as VecUsizeInterface>::ElementType: Default,
+        {
+            self.z.resize_with(self.key() + 1, Default::default);
+            let z = self.z.index_mut(*self.key());
+            // let x = z.as_mut().unwrap();
+            // *x = Some(value);
+            z.insert(value);
+            z.as_mut().unwrap()
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::prelude::*;
+    // use super::prelude::*;
     use super::*;
 
     #[test]
+    fn test_type_alias() {
+        type V = ElementOfOptionalVec<Vec<Option<u32>>>;
+        let x: V = 3;
+        let y: u32 = x;
+    }
+    #[test]
     fn test_simple() {
+        use crate::vec_usize_entry::VecUsizeEntry;
         let mut m = vec![20u8];
 
         // No growth yet.
@@ -173,6 +297,7 @@ mod test {
 
     #[test]
     fn test_with_example() {
+        use crate::vec_usize_entry::VecUsizeEntry;
         let mut m: Vec<u32> = vec![];
         let a = m.entry(1).or_default();
         assert_eq!(a, &0);
@@ -186,9 +311,19 @@ mod test {
 
     #[test]
     fn test_with_optionals() {
+        use crate::vec_usize_entry::VecUsizeEntry;
         let mut m: Vec<Option<u32>> = vec![Some(3)];
         let r = m.entry(2).or_insert(Some(5));
         assert_eq!(r, &Some(5));
+        assert_eq!(m, vec![Some(3), None, Some(5)]);
+    }
+
+    #[test]
+    fn test_with_optional_optionaltrait() {
+        use crate::vec_usize_optional_entry::VecOptionalUsizeEntry;
+        let mut m: Vec<Option<u32>> = vec![Some(3)];
+        let r = m.entry(2).or_insert(5);
+        assert_eq!(r, &5);
         assert_eq!(m, vec![Some(3), None, Some(5)]);
     }
 }
