@@ -11,6 +11,9 @@
 
 */
 
+pub use vec_entry::VecEntry;
+pub use vec_option_entry::VecOptionEntry;
+
 pub trait VecInterface {
     type ElementType;
     fn resize_with<F: FnMut() -> Self::ElementType>(&mut self, new_size: usize, f: F);
@@ -265,10 +268,11 @@ pub mod vec_option_entry {
 #[cfg(test)]
 mod test {
     // use super::prelude::*;
-    use super::*;
+    use super::{vec_entry, vec_option_entry};
 
     #[test]
     fn test_type_alias() {
+        use crate::ElementOfOptionalVec;
         type V = ElementOfOptionalVec<Vec<Option<u32>>>;
         let x: V = 3;
         let y: u32 = x;
