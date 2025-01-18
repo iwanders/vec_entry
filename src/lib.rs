@@ -17,6 +17,7 @@ pub use vec_option_entry::VecOptionEntry;
 pub trait VecInterface {
     type ElementType;
     fn resize_with<F: FnMut() -> Self::ElementType>(&mut self, new_size: usize, f: F);
+    fn len(&self) -> usize;
 }
 
 impl<T> VecInterface for Vec<T> {
@@ -24,12 +25,16 @@ impl<T> VecInterface for Vec<T> {
     fn resize_with<F: FnMut() -> Self::ElementType>(&mut self, new_size: usize, f: F) {
         self.resize_with(new_size, f)
     }
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
 
 pub trait OptionInterface {
     type ElementType;
     fn as_mut(&mut self) -> Option<&mut Self::ElementType>;
     fn insert(&mut self, value: Self::ElementType) -> &mut Self::ElementType;
+    fn is_some(&self) -> bool;
 }
 
 impl<T> OptionInterface for Option<T> {
@@ -39,6 +44,9 @@ impl<T> OptionInterface for Option<T> {
     }
     fn insert(&mut self, value: Self::ElementType) -> &mut Self::ElementType {
         self.insert(value)
+    }
+    fn is_some(&self) -> bool {
+        self.is_some()
     }
 }
 
@@ -180,8 +188,12 @@ pub mod vec_option_entry {
     impl<'a, V: 'a> VecOptionEntry<'a, Vec<Option<V>>> for Vec<Option<V>> {
         fn entry(&mut self, key: usize) -> Entry<'_, Vec<Option<V>>> {
             if key < self.len() {
-                // value must be occupied.
-                Entry::Occupied(OccupiedEntry { z: self, key })
+                // There is an option, but it still depends on whether it is none or not.
+                if self[key].is_some() {
+                    Entry::Occupied(OccupiedEntry { z: self, key })
+                } else {
+                    Entry::Vacant(VacantEntry { z: self, key })
+                }
             } else {
                 Entry::Vacant(VacantEntry { z: self, key })
             }
@@ -270,10 +282,9 @@ pub mod vec_option_entry {
             <C as Index<usize>>::Output: OptionInterface,
             <C as VecInterface>::ElementType: Default,
         {
-            self.z.resize_with(self.key() + 1, Default::default);
+            self.z
+                .resize_with(self.z.len().max(self.key() + 1), Default::default);
             let z = self.z.index_mut(*self.key());
-            // let x = z.as_mut().unwrap();
-            // *x = Some(value);
             z.insert(value);
             z.as_mut().unwrap()
         }
@@ -345,6 +356,10 @@ mod test {
         let r = m.entry(2).or_insert(5);
         assert_eq!(r, &5);
         assert_eq!(m, vec![Some(3), None, Some(5)]);
+
+        let r = m.entry(1).or_insert(1);
+        assert_eq!(m.len(), 3);
+        assert_eq!(m, vec![Some(3), Some(1), Some(5)]);
     }
 
     #[test]
@@ -354,5 +369,8 @@ mod test {
         let r = m.entry(2).or_insert_with(|| 5);
         assert_eq!(r, &5);
         assert_eq!(m, vec![Some(3), None, Some(5)]);
+        let r = m.entry(1).or_insert_with(|| 1);
+        assert_eq!(m.len(), 3);
+        assert_eq!(m, vec![Some(3), Some(1), Some(5)]);
     }
 }
