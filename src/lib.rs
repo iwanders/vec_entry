@@ -245,6 +245,21 @@ pub mod vec_option_entry {
         }
     }
 
+    impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> Entry<'a, C> {
+        pub fn or_default(self) -> &'a mut ElementOfOptionalVec<C>
+        where
+            <C as Index<usize>>::Output: Sized,
+            <C as Index<usize>>::Output: OptionInterface,
+            <C as VecInterface>::ElementType: Default,
+            <<C as Index<usize>>::Output as OptionInterface>::ElementType: Default,
+        {
+            match self {
+                Entry::Occupied(entry) => entry.into_mut(),
+                Entry::Vacant(entry) => entry.insert(Default::default()),
+            }
+        }
+    }
+
     pub struct OccupiedEntry<'a, C: 'a> {
         z: &'a mut C,
         key: usize,
@@ -294,7 +309,7 @@ pub mod vec_option_entry {
 #[cfg(test)]
 mod test {
     // use super::prelude::*;
-    use super::{vec_entry, vec_option_entry};
+    use super::vec_entry;
 
     #[test]
     fn test_type_alias() {
@@ -358,8 +373,13 @@ mod test {
         assert_eq!(m, vec![Some(3), None, Some(5)]);
 
         let r = m.entry(1).or_insert(1);
+        assert_eq!(r, &1);
         assert_eq!(m.len(), 3);
         assert_eq!(m, vec![Some(3), Some(1), Some(5)]);
+
+        let r = m.entry(4).or_default();
+        assert_eq!(r, &0);
+        assert_eq!(m, vec![Some(3), Some(1), Some(5), None, Some(0)]);
     }
 
     #[test]
@@ -369,7 +389,9 @@ mod test {
         let r = m.entry(2).or_insert_with(|| 5);
         assert_eq!(r, &5);
         assert_eq!(m, vec![Some(3), None, Some(5)]);
+
         let r = m.entry(1).or_insert_with(|| 1);
+        assert_eq!(r, &1);
         assert_eq!(m.len(), 3);
         assert_eq!(m, vec![Some(3), Some(1), Some(5)]);
     }
