@@ -5,13 +5,17 @@ use std::ops::{Index, IndexMut};
 
 /*
 Methods
-and_modify
-insert_entry
 key
-or_default
-or_insert
 or_insert_with
 or_insert_with_key
+
+Implemented:
+or_default
+or_insert
+and_modify
+
+Doesn't make much sense:
+insert_entry
 */
 
 pub trait VecOptionEntry<'a, C: 'a>
@@ -80,6 +84,23 @@ impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> Entry<'a, C> {
             Entry::Vacant(entry) => entry.insert(f()),
         }
     }
+
+    pub fn and_modify<F>(self, f: F) -> Self
+    where
+        F: FnOnce(&mut ElementOfOptionalVec<C>),
+        <C as Index<usize>>::Output: Sized,
+        <C as Index<usize>>::Output: OptionInterface,
+        <C as VecInterface>::ElementType: Default,
+    {
+        match self {
+            Entry::Occupied(mut entry) => {
+                // let mut x = entry;
+                f(entry.get_mut());
+                Entry::Occupied(entry)
+            }
+            Entry::Vacant(entry) => Entry::Vacant(entry),
+        }
+    }
 }
 
 impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> Entry<'a, C> {
@@ -106,6 +127,10 @@ where
     <C as Index<usize>>::Output: OptionInterface,
 {
     pub fn into_mut(self) -> &'a mut ElementOfOptionalVec<C> {
+        self.z.index_mut(self.key).as_mut().unwrap()
+    }
+
+    pub fn get_mut(&mut self) -> &mut ElementOfOptionalVec<C> {
         self.z.index_mut(self.key).as_mut().unwrap()
     }
 }
@@ -178,5 +203,17 @@ mod test {
         assert_eq!(r, &1);
         assert_eq!(m.len(), 3);
         assert_eq!(m, vec![Some(3), Some(1), Some(5)]);
+    }
+
+    #[test]
+    fn test_with_option_trait_and_modify() {
+        use crate::vec_option_entry::VecOptionEntry;
+        let mut map: Vec<Option<u32>> = vec![Some(3)];
+
+        map.entry(3).and_modify(|e| *e += 1).or_insert(42);
+        assert_eq!(map[3], Some(42));
+
+        map.entry(3).and_modify(|e| *e += 1).or_insert(42);
+        assert_eq!(map[3], Some(43));
     }
 }
