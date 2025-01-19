@@ -3,6 +3,17 @@ use super::OptionInterface;
 use super::VecInterface;
 use std::ops::{Index, IndexMut};
 
+/*
+Methods
+and_modify
+insert_entry
+key
+or_default
+or_insert
+or_insert_with
+or_insert_with_key
+*/
+
 pub trait VecOptionEntry<'a, C: 'a>
 where
     C: IndexMut<usize>,

@@ -14,9 +14,15 @@
 pub use vec_entry::VecEntry;
 pub use vec_option_entry::VecOptionEntry;
 
+/// Interface for a vec-like container.
 pub trait VecInterface {
+    /// The elements that are contained in this container.
     type ElementType;
+
+    /// Resize the vector to this number of elements, populating values with f.
     fn resize_with<F: FnMut() -> Self::ElementType>(&mut self, new_size: usize, f: F);
+
+    /// Returns the current length of the vector.
     fn len(&self) -> usize;
 }
 
@@ -54,24 +60,14 @@ impl<T> OptionInterface for Option<T> {
 type ElementOfOptionalVec<C> =
     <<C as std::ops::Index<usize>>::Output as OptionInterface>::ElementType;
 
-/*
-Methods
-and_modify
-insert_entry
-key
-or_default
-or_insert
-or_insert_with
-or_insert_with_key
-*/
-
+/// This supports any Vec<T>, but only considers entries vacant if beyond the current length.
 mod vec_entry;
+
+/// This supports Vec<Option<T>> and considers entries vacant on None or beyond the current length.
 mod vec_option_entry;
 
 #[cfg(test)]
 mod test {
-    // use super::prelude::*;
-
     #[test]
     fn test_type_alias() {
         use crate::ElementOfOptionalVec;
