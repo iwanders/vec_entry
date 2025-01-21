@@ -17,6 +17,7 @@ pub enum Entry<'a, C: 'a + std::ops::IndexMut<usize>> {
     Vacant(VacantEntry<'a, C>),
 }
 impl<'a, C: 'a + std::ops::IndexMut<usize>> Entry<'a, C> {
+    #[inline]
     pub fn key(&self) -> &usize {
         match *self {
             Entry::Occupied(ref entry) => entry.key(),
@@ -25,6 +26,7 @@ impl<'a, C: 'a + std::ops::IndexMut<usize>> Entry<'a, C> {
     }
 
     /// Insert
+    #[inline]
     pub fn or_insert(
         self,
         default: <C as Index<usize>>::Output,
@@ -44,6 +46,7 @@ impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> Entry<'a, C>
 where
     <C as VecInterface>::ElementType: Default,
 {
+    #[inline]
     pub fn or_default(self) -> &'a mut <C as Index<usize>>::Output {
         match self {
             Entry::Occupied(entry) => entry.into_mut(),
@@ -69,6 +72,7 @@ impl<'a, C: 'a> OccupiedEntry<'a, C> {
 }
 
 impl<'a, C: 'a + std::ops::IndexMut<usize>> OccupiedEntry<'a, C> {
+    #[inline]
     pub fn into_mut(self) -> &'a mut <C as Index<usize>>::Output {
         self.z.index_mut(self.key)
     }
@@ -80,12 +84,14 @@ pub struct VacantEntry<'a, C: 'a> {
 }
 
 impl<'a, C: 'a> VacantEntry<'a, C> {
+    #[inline]
     pub fn key(&self) -> &usize {
         &self.key
     }
 }
 
 impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> VacantEntry<'a, C> {
+    #[inline]
     pub fn insert(self, value: <C as Index<usize>>::Output) -> &'a mut <C as Index<usize>>::Output
     where
         <C as Index<usize>>::Output: Sized,
@@ -102,6 +108,7 @@ impl<'a, V: 'a> VecEntry<'a, Vec<V>> for Vec<V>
 where
     Vec<V>: std::ops::IndexMut<usize>,
 {
+    #[inline]
     fn entry(&mut self, key: usize) -> Entry<'_, Vec<V>> {
         if key < self.len() {
             // value must be occupied.

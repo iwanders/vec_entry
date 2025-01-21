@@ -28,9 +28,11 @@ pub trait VecInterface {
 
 impl<T> VecInterface for Vec<T> {
     type ElementType = T;
+    #[inline]
     fn resize_with<F: FnMut() -> Self::ElementType>(&mut self, new_size: usize, f: F) {
         self.resize_with(new_size, f)
     }
+    #[inline]
     fn len(&self) -> usize {
         self.len()
     }
@@ -45,12 +47,15 @@ pub trait OptionInterface {
 
 impl<T> OptionInterface for Option<T> {
     type ElementType = T;
+    #[inline]
     fn as_mut(&mut self) -> Option<&mut Self::ElementType> {
         self.as_mut()
     }
+    #[inline]
     fn insert(&mut self, value: Self::ElementType) -> &mut Self::ElementType {
         self.insert(value)
     }
+    #[inline]
     fn is_some(&self) -> bool {
         self.is_some()
     }

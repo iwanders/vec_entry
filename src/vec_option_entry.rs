@@ -27,6 +27,7 @@ where
 }
 
 impl<'a, V: 'a> VecOptionEntry<'a, Vec<Option<V>>> for Vec<Option<V>> {
+    #[inline]
     fn entry(&mut self, key: usize) -> Entry<'_, Vec<Option<V>>> {
         if key < self.len() {
             // There is an option, but it still depends on whether it is none or not.
@@ -50,6 +51,7 @@ pub enum Entry<'a, C: 'a + std::ops::IndexMut<usize>> {
 }
 
 impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> Entry<'a, C> {
+    #[inline]
     pub fn key(&self) -> &usize {
         match *self {
             Entry::Occupied(ref entry) => entry.key(),
@@ -58,6 +60,7 @@ impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> Entry<'a, C> {
     }
 
     /// Insert
+    #[inline]
     pub fn or_insert(self, value: ElementOfOptionalVec<C>) -> &'a mut ElementOfOptionalVec<C>
     where
         <C as Index<usize>>::Output: Sized,
@@ -70,6 +73,7 @@ impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> Entry<'a, C> {
         }
     }
 
+    #[inline]
     pub fn or_insert_with<F: FnOnce() -> ElementOfOptionalVec<C>>(
         self,
         f: F,
@@ -85,6 +89,7 @@ impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> Entry<'a, C> {
         }
     }
 
+    #[inline]
     pub fn and_modify<F>(self, f: F) -> Self
     where
         F: FnOnce(&mut ElementOfOptionalVec<C>),
@@ -104,6 +109,7 @@ impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> Entry<'a, C> {
 }
 
 impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> Entry<'a, C> {
+    #[inline]
     pub fn or_default(self) -> &'a mut ElementOfOptionalVec<C>
     where
         <C as Index<usize>>::Output: Sized,
@@ -126,16 +132,19 @@ impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> OccupiedEntry<'a, C>
 where
     <C as Index<usize>>::Output: OptionInterface,
 {
+    #[inline]
     pub fn into_mut(self) -> &'a mut ElementOfOptionalVec<C> {
         self.z.index_mut(self.key).as_mut().unwrap()
     }
 
+    #[inline]
     pub fn get_mut(&mut self) -> &mut ElementOfOptionalVec<C> {
         self.z.index_mut(self.key).as_mut().unwrap()
     }
 }
 
 impl<'a, C: 'a> OccupiedEntry<'a, C> {
+    #[inline]
     pub fn key(&self) -> &usize {
         &self.key
     }
@@ -147,12 +156,14 @@ pub struct VacantEntry<'a, C: 'a> {
 }
 
 impl<'a, C: 'a> VacantEntry<'a, C> {
+    #[inline]
     pub fn key(&self) -> &usize {
         &self.key
     }
 }
 
 impl<'a, C: 'a + std::ops::IndexMut<usize> + VecInterface> VacantEntry<'a, C> {
+    #[inline]
     pub fn insert(self, value: ElementOfOptionalVec<C>) -> &'a mut ElementOfOptionalVec<C>
     where
         <C as Index<usize>>::Output: Sized,
