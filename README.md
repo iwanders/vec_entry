@@ -1,12 +1,20 @@
 # An 'entry' interface for Vec
 
 The `std::collections::HashMap` container has a nice [entry](https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.entry) method.
-At some point I needed to assign values into a vector and just grow the vector with `Default::default` if it wasn't yet of that size.
-Currently an entry is only considered vacant if it is beyond the size of the vector, the element in the container is required to be  `Default::default`, otherwise the container can't be grown. It also requires the key to be an `usize`, because otherwise we can't calculate how much to grow the vector.
+
+This provides two similar interfaces for a `Vec`, or rather any container that implements the `VecInterface` trait.
 
 ## VecOptionEntry
 
-This trait requires the `Vec` to hold an type that implements `OptionInterface`, if an entry is `None` it is considered unoccupied.
+Properties:
+- Requires the index key to be an `usize` (necessary to know the required size when resizing).
+- An entry is `Vacant` if the value is none, or the index is beyond the size of the current container.
+- The container is grown and populated with `None` on accessing a `Vacant` entry beyond the current size.
+- The elements in the container must implement `OptionInterface`, which is implemented for `Option`.
+
+This is useful if you can use `usize` keys and fields may be populated or empty and need to be iterated over
+in-order later and a contiguous container is desired.
+
 
 ```rust
 use crate::vec_option_entry::VecOptionEntry;
@@ -18,7 +26,10 @@ assert_eq!(m, vec![Some(3), None, Some(5)]);
 
 ## VecEntry
 
-This is the version that I actually needed, one that just grows the `Vec` if it doesn't fit yet.
+Properties:
+- Requires the index key to be an `usize` (necessary to know the required size when resizing).
+- An entry is only `Vacant` if beyond the current size of the container.
+- The container is grown and populated with `Default` on accessing a `Vacant` entry beyond the current size.
 
 ```rust
 use crate::vec_entry::VecEntry;
