@@ -5,14 +5,14 @@ use std::ops::{Index, IndexMut};
 
 /*
 Methods
-key
-or_insert_with
-or_insert_with_key
 
 Implemented:
 or_default
 or_insert
 and_modify
+key
+or_insert_with
+or_insert_with_key
 
 Doesn't make much sense:
 insert_entry
